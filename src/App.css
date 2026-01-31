@@ -1,0 +1,71 @@
+/* App.css */
+.app {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.grid {
+  display: flex;
+  flex-direction: column;
+}
+
+.row {
+  display: flex;
+}
+
+.cell {
+  width: 128px;
+  height: 128px;
+  border: 1px solid black;
+  margin: 5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.splash {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  animation: spin 2s linear infinite; /* Example animation */
+}
+
+.ReactModal__Overlay {
+  z-index: 1000 !important; /* или 9999, если конфликтует с чем-то */
+}
+
+/* Само модальное окно */
+.ReactModal__Content {
+  z-index: 1001 !important;
+  overflow: visible !important; /* чтобы ничего не обрезалось */
+  position: relative !important;
+}
+
+/* Все внутренние элементы модалки (select, кнопки, заголовок) */
+.ReactModal__Content * {
+  position: relative;
+  z-index: 1002 !important; /* выше превью */
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Theme support */
+@media (prefers-color-scheme: dark) {
+  body {
+    background-color: black;
+    color: white;
+  }
+}
+
+@media (prefers-color-scheme: light) {
+  body {
+    background-color: white;
+    color: black;
+  }
+}
