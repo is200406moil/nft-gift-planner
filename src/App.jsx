@@ -287,7 +287,7 @@ function App() {
                                         model={cell.model}
                                       />
                                     ) : (
-                                      <img
+                                      <ImageWithRetry
                                         src={`${API_BASE}/model/${normalizeGiftName(cell.gift)}/${cell.model}.png?size=128`}
                                         alt="gift model"
                                         style={{
@@ -562,6 +562,43 @@ const PatternRings = ({ gift, pattern }) => {
   );
 };
 
+const ImageWithRetry = ({ src, alt, style, maxRetries = 3 }) => {
+  const [retryCount, setRetryCount] = useState(0);
+  const [hasError, setHasError] = useState(false);
+
+  const handleError = () => {
+    if (retryCount < maxRetries) {
+      console.warn(`Image load failed, retrying (${retryCount + 1}/${maxRetries}): ${src}`);
+      // Retry with incremental delay
+      setTimeout(() => {
+        setRetryCount(prev => prev + 1);
+      }, 1000 * (retryCount + 1)); // exponential backoff
+    } else {
+      console.error(`Image load failed after ${maxRetries} retries: ${src}`);
+      setHasError(true);
+    }
+  };
+
+  if (hasError) {
+    return null; // Or return a placeholder image
+  }
+
+  // Add retry count to URL to force reload
+  const imageSrc = retryCount > 0 
+    ? `${src}${src.includes('?') ? '&' : '?'}retry=${retryCount}`
+    : src;
+
+  return (
+    <img
+      key={`${src}-${retryCount}`}
+      src={imageSrc}
+      alt={alt}
+      style={style}
+      onError={handleError}
+    />
+  );
+};
+
 const TgsAnimation = ({ gift, model }) => {
   const canvasRef = useRef(null);
   const playerRef = useRef(null);
@@ -582,19 +619,40 @@ const TgsAnimation = ({ gift, model }) => {
         // For simplicity, we'll show a placeholder or static image
         // In production, you would use: npm install lottie-web
         
-        // Fallback to showing static PNG during animation
-        const img = new Image();
-        img.src = `${API_BASE}/model/${normalizeGiftName(gift)}/${model}.png?size=128`;
-        img.onload = () => {
-          if (isMounted && canvasRef.current) {
-            const ctx = canvasRef.current.getContext('2d');
-            canvasRef.current.width = 128;
-            canvasRef.current.height = 128;
-            ctx.drawImage(img, 0, 0, 128, 128);
+        // Fallback to showing static PNG during animation with retry logic
+        const imageUrl = `${API_BASE}/model/${normalizeGiftName(gift)}/${model}.png?size=128`;
+        
+        // Try loading image with retry mechanism
+        const loadImageWithRetry = async (url, maxRetries = 3) => {
+          for (let attempt = 1; attempt <= maxRetries; attempt++) {
+            try {
+              const img = new Image();
+              await new Promise((resolve, reject) => {
+                img.onload = () => resolve(img);
+                img.onerror = () => reject(new Error(`Failed to load image: ${url}`));
+                img.src = url;
+              });
+              return img;
+            } catch (error) {
+              console.warn(`Image load attempt ${attempt}/${maxRetries} failed for ${gift}/${model}:`, error.message);
+              if (attempt === maxRetries) {
+                throw error;
+              }
+              await new Promise(r => setTimeout(r, 1000 * attempt)); // exponential backoff
+            }
           }
         };
+
+        const img = await loadImageWithRetry(imageUrl);
+        
+        if (isMounted && canvasRef.current) {
+          const ctx = canvasRef.current.getContext('2d');
+          canvasRef.current.width = 128;
+          canvasRef.current.height = 128;
+          ctx.drawImage(img, 0, 0, 128, 128);
+        }
       } catch (error) {
-        console.error(`Failed to load animation for ${gift}/${model}:`, error);
+        console.error(`Failed to load animation for ${gift}/${model} after all retries:`, error);
       }
     };
 
