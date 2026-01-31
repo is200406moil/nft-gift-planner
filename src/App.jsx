@@ -584,7 +584,7 @@ const TgsAnimation = ({ gift, model }) => {
         const jsonUrl = `${API_BASE}/model/${normalizeGiftName(gift)}/${model}.json`;
         
         const response = await fetch(jsonUrl);
-        if (!response.ok) throw new Error(`Failed to load animation: ${response.status}`);
+        if (!response.ok) throw new Error(`Failed to load animation: ${response.status} ${response.statusText}`);
         
         const animationData = await response.json();
 
@@ -609,13 +609,17 @@ const TgsAnimation = ({ gift, model }) => {
         
         // Fallback to static image if animation fails
         if (isMounted && containerRef.current) {
-          containerRef.current.innerHTML = `
-            <img 
-              src="${API_BASE}/model/${normalizeGiftName(gift)}/${model}.png?size=64" 
-              alt="gift model"
-              style="width: 100%; height: 100%; object-fit: contain;"
-            />
-          `;
+          // Clear container safely
+          containerRef.current.textContent = '';
+          
+          // Create img element safely to avoid XSS
+          const img = document.createElement('img');
+          img.src = `${API_BASE}/model/${normalizeGiftName(gift)}/${model}.png?size=64`;
+          img.alt = 'gift model';
+          img.style.width = '100%';
+          img.style.height = '100%';
+          img.style.objectFit = 'contain';
+          containerRef.current.appendChild(img);
         }
       }
     };
