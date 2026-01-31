@@ -5,6 +5,7 @@ import './App.css'; // Assume CSS file for styles
 import Modal from 'react-modal'; // For modals, install react-modal
 import html2canvas from 'html2canvas'; // For export, install html2canvas
 import lottie from 'lottie-web';
+import pako from 'pako';
 
 Modal.setAppElement('#root');
 
@@ -580,13 +581,20 @@ const TgsAnimation = ({ gift, model }) => {
           animationRef.current = null;
         }
 
-        // Load JSON format from API (decompressed Lottie)
-        const jsonUrl = `${API_BASE}/model/${normalizeGiftName(gift)}/${model}.json`;
+        // Load TGS format from API (default format, gzipped Lottie JSON)
+        const tgsUrl = `${API_BASE}/model/${normalizeGiftName(gift)}/${model}.tgs`;
         
-        const response = await fetch(jsonUrl);
+        const response = await fetch(tgsUrl);
         if (!response.ok) throw new Error(`Failed to load animation: ${response.status} ${response.statusText}`);
         
-        const animationData = await response.json();
+        // Get the TGS file as ArrayBuffer
+        const arrayBuffer = await response.arrayBuffer();
+        
+        // Decompress the gzipped data
+        const decompressed = pako.inflate(new Uint8Array(arrayBuffer), { to: 'string' });
+        
+        // Parse the decompressed JSON
+        const animationData = JSON.parse(decompressed);
 
         if (!isMounted || !containerRef.current) return;
 
