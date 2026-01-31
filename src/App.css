@@ -64,6 +64,24 @@
   cursor: pointer;
 }
 
+.animate-all-button {
+  background-color: var(--button-hover) !important;
+  color: white !important;
+  font-weight: 600;
+  padding: 0.6em 1.5em;
+}
+
+.animate-all-button:hover:not(:disabled) {
+  background-color: #535bf2 !important;
+  transform: scale(1.05);
+}
+
+.animate-all-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background-color: #888 !important;
+}
+
 .tooltip-icon {
   display: inline-flex;
   align-items: center;
@@ -118,35 +136,6 @@
 .empty-cell {
   color: var(--empty-cell-color);
   font-size: 14px;
-}
-
-.play-button {
-  position: absolute;
-  bottom: 5px;
-  right: 5px;
-  width: 30px;
-  height: 30px;
-  border-radius: 50%;
-  background-color: rgba(100, 108, 255, 0.8);
-  color: white;
-  border: none;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 12px;
-  z-index: 10;
-  transition: background-color 0.2s ease, transform 0.1s ease;
-}
-
-.play-button:hover:not(:disabled) {
-  background-color: rgba(100, 108, 255, 1);
-  transform: scale(1.1);
-}
-
-.play-button:disabled {
-  background-color: rgba(100, 108, 255, 0.4);
-  cursor: not-allowed;
 }
 
 .splash {

@@ -166,22 +166,29 @@ function App() {
     }
   };
 
-  const playAnimation = (rowIndex, colIndex) => {
-    const cell = grid[rowIndex][colIndex];
-    if (!cell || !cell.gift || !cell.model) return;
-    
-    const key = `${rowIndex}-${colIndex}`;
-    setPlayingAnimations(prev => ({ ...prev, [key]: true }));
-    
-    // Animation will play once and then stop
-    // Note: Assumes animation duration is ~3 seconds. Adjust if needed.
-    setTimeout(() => {
-      setPlayingAnimations(prev => {
-        const newState = { ...prev };
-        delete newState[key];
-        return newState;
+  const playAllAnimations = () => {
+    // Find all cells with gifts and models
+    const animations = {};
+    grid.forEach((row, rowIndex) => {
+      row.forEach((cell, colIndex) => {
+        if (cell && cell.gift && cell.model) {
+          const key = `${rowIndex}-${colIndex}`;
+          animations[key] = true;
+        }
       });
+    });
+    
+    // Start all animations at once
+    setPlayingAnimations(animations);
+    
+    // Stop all animations after duration
+    setTimeout(() => {
+      setPlayingAnimations({});
     }, 3000);
+  };
+
+  const isAnyAnimationPlaying = () => {
+    return Object.keys(playingAnimations).length > 0;
   };
 
   const resetGrid = () => {
@@ -221,6 +228,15 @@ function App() {
             ?
           </span>
         </div>
+        {animationMode && (
+          <button 
+            onClick={playAllAnimations} 
+            disabled={isAnyAnimationPlaying()}
+            className="animate-all-button"
+          >
+            Анимировать всё
+          </button>
+        )}
         <button onClick={addRow} disabled={animationMode && rows >= 5}>
           Добавить ряд
         </button>
@@ -285,18 +301,6 @@ function App() {
                                       />
                                     )}
                                   </>
-                                )}
-                                {animationMode && cell?.gift && cell?.model && (
-                                  <button 
-                                    className="play-button"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      playAnimation(rowIndex, colIndex);
-                                    }}
-                                    disabled={isPlaying}
-                                  >
-                                    ▶
-                                  </button>
                                 )}
                               </div>
                             ) : (
