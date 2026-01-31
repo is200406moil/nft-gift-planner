@@ -12,6 +12,7 @@
   "dependencies": {
     "@hello-pangea/dnd": "^18.0.1",
     "html2canvas": "^1.4.1",
+    "lottie-web": "^5.13.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-modal": "^3.16.3"
