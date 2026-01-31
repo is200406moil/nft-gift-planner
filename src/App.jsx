@@ -608,6 +608,8 @@ const TgsAnimation = ({ gift, model }) => {
         console.error(`Failed to load animation for ${gift}/${model}:`, error);
         // Fallback to static image if animation fails
         if (containerRef.current && isMounted) {
+          // Clear any existing content before adding fallback
+          containerRef.current.innerHTML = '';
           const img = document.createElement('img');
           img.src = `${API_BASE}/model/${normalizeGiftName(gift)}/${model}.png?size=64`;
           img.style.width = '100%';
