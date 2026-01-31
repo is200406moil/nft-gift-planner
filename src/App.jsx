@@ -601,10 +601,6 @@ const TgsAnimation = ({ gift, model }) => {
         console.error(`Failed to load animation for ${gift}/${model}:`, error);
         // Fallback to static image on error
         if (containerRef.current && isMounted) {
-          // Clear container safely
-          while (containerRef.current.firstChild) {
-            containerRef.current.removeChild(containerRef.current.firstChild);
-          }
           // Create image element programmatically to avoid XSS
           const img = document.createElement('img');
           img.src = `${API_BASE}/model/${normalizeGiftName(gift)}/${model}.png?size=128`;
@@ -612,7 +608,8 @@ const TgsAnimation = ({ gift, model }) => {
           img.style.width = '100%';
           img.style.height = '100%';
           img.style.objectFit = 'contain';
-          containerRef.current.appendChild(img);
+          // Clear and replace children safely
+          containerRef.current.replaceChildren(img);
         }
       }
     };
