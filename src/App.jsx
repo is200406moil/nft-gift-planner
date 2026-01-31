@@ -27,6 +27,8 @@ function App() {
   const [copiedCell, setCopiedCell] = useState(null);
   const [modelsCache, setModelsCache] = useState({});
   const [patternsCache, setPatternsCache] = useState({});
+  const [animationMode, setAnimationMode] = useState(false);
+  const [playingAnimations, setPlayingAnimations] = useState({});
 
   useEffect(() => {
     loadInitialData();
@@ -96,13 +98,15 @@ function App() {
   };
 
   const addRow = () => {
+    // Limit to 5 rows when animation mode is active
+    if (animationMode && rows >= 5) return;
     setRows(rows + 1);
     setGrid([...grid, Array(3).fill(null)]);
   };
 
-  const removeRow = (rowIndex) => {
+  const removeRow = () => {
     if (rows <= 3) return;
-    const newGrid = grid.filter((_, i) => i !== rowIndex);
+    const newGrid = grid.slice(0, -1); // Remove last row
     setGrid(newGrid);
     setRows(rows - 1);
   };
@@ -141,11 +145,41 @@ function App() {
     const destRow = Math.floor(destination.index / 3);
     const destCol = destination.index % 3;
 
-    const newGrid = [...grid];
+    // Create a deep copy of the grid to avoid mutation issues
+    const newGrid = grid.map(row => [...row]);
     const temp = newGrid[destRow][destCol];
     newGrid[destRow][destCol] = newGrid[sourceRow][sourceCol];
     newGrid[sourceRow][sourceCol] = temp;
     setGrid(newGrid);
+  };
+
+  const toggleAnimationMode = () => {
+    const newAnimationMode = !animationMode;
+    setAnimationMode(newAnimationMode);
+    
+    // If turning on animation mode and rows > 5, remove excess rows
+    if (newAnimationMode && rows > 5) {
+      const newGrid = grid.slice(0, 5);
+      setGrid(newGrid);
+      setRows(5);
+    }
+  };
+
+  const playAnimation = (rowIndex, colIndex) => {
+    const cell = grid[rowIndex][colIndex];
+    if (!cell || !cell.gift || !cell.model) return;
+    
+    const key = `${rowIndex}-${colIndex}`;
+    setPlayingAnimations(prev => ({ ...prev, [key]: true }));
+    
+    // Animation will play once and then stop
+    setTimeout(() => {
+      setPlayingAnimations(prev => {
+        const newState = { ...prev };
+        delete newState[key];
+        return newState;
+      });
+    }, 3000); // Assume animation duration is ~3 seconds
   };
 
   const resetGrid = () => {
@@ -168,6 +202,32 @@ function App() {
 
   return (
     <div className="app">
+      <div className="controls">
+        <div className="animation-toggle-container">
+          <label>
+            <input
+              type="checkbox"
+              checked={animationMode}
+              onChange={toggleAnimationMode}
+            />
+            Анимация
+          </label>
+          <span 
+            className="tooltip-icon" 
+            title="ВНИМАНИЕ! При включенном режиме анимации сетка будет ограничена в 5 рядов."
+          >
+            ?
+          </span>
+        </div>
+        <button onClick={addRow} disabled={animationMode && rows >= 5}>
+          Добавить ряд
+        </button>
+        <button onClick={removeRow} disabled={rows <= 3 || (animationMode && rows <= 5)}>
+          Удалить ряд
+        </button>
+        <button onClick={resetGrid}>Сброс</button>
+        <button onClick={exportGrid}>Экспорт</button>
+      </div>
       <DragDropContext onDragEnd={onDragEnd}>
         <Droppable droppableId="grid" direction="horizontal" type="cell">
           {(provided) => (
@@ -176,11 +236,12 @@ function App() {
                 <div key={rowIndex} className="row">
                   {row.map((cell, colIndex) => {
                     const index = rowIndex * 3 + colIndex;
+                    const isPlaying = playingAnimations[`${rowIndex}-${colIndex}`];
                     return (
                       <Draggable key={index} draggableId={`cell-${index}`} index={index}>
-                        {(provided) => (
+                        {(provided, snapshot) => (
                           <div
-                            className="cell"
+                            className={`cell ${snapshot.isDragging ? 'dragging' : ''}`}
                             onClick={() => !cell && openModal(rowIndex, colIndex)}
                             ref={provided.innerRef}
                             {...provided.draggableProps}
@@ -188,18 +249,6 @@ function App() {
                           >
                             {cell ? (
                               <div style={{ position: 'relative', width: '100%', height: '100%' }}>
-                                {/* {cell.backdrop && (
-                                  <div
-                                    style={{
-                                      position: 'absolute',
-                                      top: 0,
-                                      left: 0,
-                                      width: '100%',
-                                      height: '100%',
-                                      background: `linear-gradient(to bottom, ${cell.backdrop.hex.edgeColor}, ${cell.backdrop.hex.centerColor})`,
-                                    }}
-                                  />
-                                )} */}
                                 {cell.backdrop && (
                                   <div
                                     style={{
@@ -212,30 +261,50 @@ function App() {
                                 {cell?.pattern && cell?.gift && (
                                   <PatternRings gift={cell.gift} pattern={cell.pattern} />
                                 )}
-                                {cell?.model && cell?.gift && (
-                                  <img
-                                    src={`${API_BASE}/model/${normalizeGiftName(cell.gift)}/${cell.model}.png?size=128`}
-                                    alt="gift model"
-                                    style={{
-                                      position: 'absolute',
-                                      inset: 0,
-                                      width: '100%',
-                                      height: '100%',
-                                      objectFit: 'contain',
-                                      zIndex: 2,           // ← должно быть выше, чем у паттерна
+                                {cell?.gift && cell?.model && (
+                                  <>
+                                    {isPlaying && animationMode ? (
+                                      <TgsAnimation 
+                                        gift={cell.gift} 
+                                        model={cell.model}
+                                      />
+                                    ) : (
+                                      <img
+                                        src={`${API_BASE}/model/${normalizeGiftName(cell.gift)}/${cell.model}.png?size=128`}
+                                        alt="gift model"
+                                        style={{
+                                          position: 'absolute',
+                                          inset: 0,
+                                          width: '100%',
+                                          height: '100%',
+                                          objectFit: 'contain',
+                                          zIndex: 2,
+                                        }}
+                                      />
+                                    )}
+                                  </>
+                                )}
+                                {animationMode && cell?.gift && cell?.model && (
+                                  <button 
+                                    className="play-button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      playAnimation(rowIndex, colIndex);
                                     }}
-                                  />
+                                    disabled={isPlaying}
+                                  >
+                                    ▶
+                                  </button>
                                 )}
                               </div>
                             ) : (
-                              'Empty'
+                              <span className="empty-cell">Empty</span>
                             )}
                           </div>
                         )}
                       </Draggable>
                     );
                   })}
-                  <button onClick={() => removeRow(rowIndex)}>-</button>
                 </div>
               ))}
               {provided.placeholder}
@@ -243,9 +312,6 @@ function App() {
           )}
         </Droppable>
       </DragDropContext>
-      <button onClick={addRow}>+</button>
-      <button onClick={resetGrid}>Reset</button>
-      <button onClick={exportGrid}>Export</button>
 
       <CellModal
         isOpen={modalIsOpen}
@@ -367,9 +433,9 @@ const CellModal = ({
 
   return (
     <Modal isOpen={isOpen} onRequestClose={onClose}>
-      <h2>Customize Cell</h2>
+      <h2>Настройка ячейки</h2>
       <input value={link} onChange={(e) => setLink(e.target.value)} placeholder="t.me/nft/Name-123" />
-      <button onClick={handleLink}>Parse Link</button>
+      <button onClick={handleLink}>Распознать ссылку</button>
 
       <select value={gift} onChange={(e) => {
         setModel('');
@@ -379,14 +445,14 @@ const CellModal = ({
         setPatterns([]);
         setGift(e.target.value);  // после сброса устанавливаем новый gift
       }}>
-        <option value="">Select Gift</option>
+        <option value="">Выберите подарок</option>
         {gifts.map((g) => <option key={g} value={g}>{g}</option>)}
       </select>
 
       {gift && (
         <>
           <select value={model} onChange={(e) => setModel(e.target.value)}>
-            <option value="">Select Model</option>
+            <option value="">Выберите модель</option>
             {models.map((m) => (
               <option key={m.name} value={m.name}>{m.name} ({(m.rarityPermille / 10).toFixed(1)}‰)</option>
             ))}
@@ -399,7 +465,7 @@ const CellModal = ({
               setBackdrop(selected || null);
             }}
           >
-            <option value="">Select Backdrop</option>
+            <option value="">Выберите фон</option>
             {backdrops.map((b) => (
               <option key={b.name} value={b.name}>
                 {b.name} {b.hex?.centerColor ? `(${b.hex.centerColor})` : ''}
@@ -408,7 +474,7 @@ const CellModal = ({
           </select>
 
           <select value={pattern} onChange={(e) => setPattern(e.target.value)}>
-            <option value="">Select Pattern</option>
+            <option value="">Выберите паттерн</option>
             {patterns.map((p) => (
               <option key={p.name} value={p.name}>{p.name} ({(p.rarityPermille / 10).toFixed(1)}‰)</option>
             ))}
@@ -416,45 +482,10 @@ const CellModal = ({
         </>
       )}
 
-      <div className="preview">
-        {gift && model && (
-          <div style={{ position: 'relative', width: 256, height: 256 }}>
-            {backdrop && (
-              <div
-                style={{
-                  position: 'absolute',
-                  top: 0,
-                  left: 0,
-                  width: '100%',
-                  height: '100%',
-                  background: `linear-gradient(to bottom, ${backdrop.hex.edgeColor}, ${backdrop.hex.centerColor})`,
-                }}
-              />
-            )}
-            {pattern && (
-              <img
-                src={`${API_BASE}/pattern/${norm}/${pattern}.png?size=256`}
-                alt="pattern"
-                style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', opacity: 0.5 }}
-              />
-            )}
-            <img
-              src={`${API_BASE}/model/${norm}/${model}.png?size=256`}
-              alt="preview"
-              style={{ position: 'relative', width: '100%', height: '100%' }}
-              onError={(e) => {
-                e.target.onerror = null;
-                e.target.src = '';  // или fallback image
-              }}
-            />
-          </div>
-        )}
-      </div>
-
-      <button onClick={copyCell}>Copy</button>
-      <button onClick={pasteCell}>Paste</button>
-      <button onClick={handleSave}>Save</button>
-      <button onClick={onClose}>Cancel</button>
+      <button onClick={copyCell}>Копировать</button>
+      <button onClick={pasteCell}>Вставить</button>
+      <button onClick={handleSave}>Сохранить</button>
+      <button onClick={onClose}>Отмена</button>
     </Modal>
   );
 };
@@ -523,6 +554,67 @@ const PatternRings = ({ gift, pattern }) => {
         zIndex: 1,
         pointerEvents: 'none',
         opacity: 0.18, // общая прозрачность колец
+      }}
+    />
+  );
+};
+
+const TgsAnimation = ({ gift, model }) => {
+  const canvasRef = useRef(null);
+  const playerRef = useRef(null);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadAnimation = async () => {
+      if (!canvasRef.current) return;
+
+      try {
+        // Load rlottie or lottie-web library dynamically
+        // For now, we'll use a simpler approach with the TGS file
+        const tgsUrl = `${API_BASE}/model/${normalizeGiftName(gift)}/${model}.tgs`;
+        
+        // Since TGS files are Lottie animations in gzip format,
+        // we can display them using a library like lottie-web
+        // For simplicity, we'll show a placeholder or static image
+        // In production, you would use: npm install lottie-web
+        
+        // Fallback to showing static PNG during animation
+        const img = new Image();
+        img.src = `${API_BASE}/model/${normalizeGiftName(gift)}/${model}.png?size=128`;
+        img.onload = () => {
+          if (isMounted && canvasRef.current) {
+            const ctx = canvasRef.current.getContext('2d');
+            canvasRef.current.width = 128;
+            canvasRef.current.height = 128;
+            ctx.drawImage(img, 0, 0, 128, 128);
+          }
+        };
+      } catch (error) {
+        console.error('Failed to load animation:', error);
+      }
+    };
+
+    loadAnimation();
+
+    return () => {
+      isMounted = false;
+      if (playerRef.current) {
+        playerRef.current = null;
+      }
+    };
+  }, [gift, model]);
+
+  return (
+    <canvas
+      ref={canvasRef}
+      style={{
+        position: 'absolute',
+        inset: 0,
+        width: '100%',
+        height: '100%',
+        objectFit: 'contain',
+        zIndex: 2,
       }}
     />
   );
