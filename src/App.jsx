@@ -609,7 +609,7 @@ const TgsAnimation = ({ gift, model }) => {
         // Fallback to static image if animation fails
         if (containerRef.current && isMounted) {
           const img = document.createElement('img');
-          img.src = `${API_BASE}/model/${normalizeGiftName(gift)}/${model}.png?size=128`;
+          img.src = `${API_BASE}/model/${normalizeGiftName(gift)}/${model}.png?size=64`;
           img.style.width = '100%';
           img.style.height = '100%';
           img.style.objectFit = 'contain';
