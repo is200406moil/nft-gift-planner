@@ -4,6 +4,8 @@ import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import './App.css'; // Assume CSS file for styles
 import Modal from 'react-modal'; // For modals, install react-modal
 import html2canvas from 'html2canvas'; // For export, install html2canvas
+import lottie from 'lottie-web';
+import pako from 'pako';
 
 Modal.setAppElement('#root');
 
@@ -288,7 +290,7 @@ function App() {
                                       />
                                     ) : (
                                       <img
-                                        src={`${API_BASE}/model/${normalizeGiftName(cell.gift)}/${cell.model}.png?size=128`}
+                                        src={`${API_BASE}/model/${normalizeGiftName(cell.gift)}/${cell.model}.png?size=64`}
                                         alt="gift model"
                                         style={{
                                           position: 'absolute',
@@ -510,7 +512,7 @@ const PatternRings = ({ gift, pattern }) => {
       const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
       const img = document.createElementNS('http://www.w3.org/2000/svg', 'image');
       img.setAttribute('id', 'pattern-symbol');
-      img.setAttribute('href', `${API_BASE}/pattern/${normalizeGiftName(gift)}/${pattern}.png?size=64`);
+      img.setAttribute('href', `${API_BASE}/pattern/${normalizeGiftName(gift)}/${pattern}.png?size=128`);
       img.setAttribute('width', '32');
       img.setAttribute('height', '32');
       defs.appendChild(img);
@@ -563,38 +565,70 @@ const PatternRings = ({ gift, pattern }) => {
 };
 
 const TgsAnimation = ({ gift, model }) => {
-  const canvasRef = useRef(null);
-  const playerRef = useRef(null);
+  const containerRef = useRef(null);
+  const animationRef = useRef(null);
 
   useEffect(() => {
     let isMounted = true;
 
     const loadAnimation = async () => {
-      if (!canvasRef.current) return;
+      if (!containerRef.current) return;
 
       try {
-        // Load rlottie or lottie-web library dynamically
-        // For now, we'll use a simpler approach with the TGS file
-        // const tgsUrl = `${API_BASE}/model/${normalizeGiftName(gift)}/${model}.tgs`;
+        // Clean up previous animation if exists
+        if (animationRef.current) {
+          animationRef.current.destroy();
+          animationRef.current = null;
+        }
+
+        // Load TGS format from API (default format, gzipped Lottie JSON)
+        const tgsUrl = `${API_BASE}/model/${normalizeGiftName(gift)}/${model}.tgs`;
         
-        // Since TGS files are Lottie animations in gzip format,
-        // we can display them using a library like lottie-web
-        // For simplicity, we'll show a placeholder or static image
-        // In production, you would use: npm install lottie-web
+        const response = await fetch(tgsUrl);
+        if (!response.ok) throw new Error(`Failed to load animation: ${response.status} ${response.statusText}`);
         
-        // Fallback to showing static PNG during animation
-        const img = new Image();
-        img.src = `${API_BASE}/model/${normalizeGiftName(gift)}/${model}.png?size=128`;
-        img.onload = () => {
-          if (isMounted && canvasRef.current) {
-            const ctx = canvasRef.current.getContext('2d');
-            canvasRef.current.width = 128;
-            canvasRef.current.height = 128;
-            ctx.drawImage(img, 0, 0, 128, 128);
+        // Get the TGS file as ArrayBuffer
+        const arrayBuffer = await response.arrayBuffer();
+        
+        // Decompress the gzipped data
+        const decompressed = pako.inflate(new Uint8Array(arrayBuffer), { to: 'string' });
+        
+        // Parse the decompressed JSON
+        const animationData = JSON.parse(decompressed);
+
+        if (!isMounted || !containerRef.current) return;
+
+        // Create lottie animation
+        animationRef.current = lottie.loadAnimation({
+          container: containerRef.current,
+          renderer: 'svg',
+          loop: true,
+          autoplay: true,
+          animationData: animationData,
+          rendererSettings: {
+            preserveAspectRatio: 'xMidYMid meet',
+            clearCanvas: true,
+            progressiveLoad: true,
+            hideOnTransparent: true
           }
-        };
+        });
       } catch (error) {
         console.error(`Failed to load animation for ${gift}/${model}:`, error);
+        
+        // Fallback to static image if animation fails
+        if (isMounted && containerRef.current) {
+          // Clear container safely
+          containerRef.current.textContent = '';
+          
+          // Create img element safely to avoid XSS
+          const img = document.createElement('img');
+          img.src = `${API_BASE}/model/${normalizeGiftName(gift)}/${model}.png?size=64`;
+          img.alt = 'gift model';
+          img.style.width = '100%';
+          img.style.height = '100%';
+          img.style.objectFit = 'contain';
+          containerRef.current.appendChild(img);
+        }
       }
     };
 
@@ -602,21 +636,21 @@ const TgsAnimation = ({ gift, model }) => {
 
     return () => {
       isMounted = false;
-      if (playerRef.current) {
-        playerRef.current = null;
+      if (animationRef.current) {
+        animationRef.current.destroy();
+        animationRef.current = null;
       }
     };
   }, [gift, model]);
 
   return (
-    <canvas
-      ref={canvasRef}
+    <div
+      ref={containerRef}
       style={{
         position: 'absolute',
         inset: 0,
         width: '100%',
         height: '100%',
-        objectFit: 'contain',
         zIndex: 2,
       }}
     />
