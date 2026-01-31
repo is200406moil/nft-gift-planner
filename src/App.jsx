@@ -563,38 +563,48 @@ const PatternRings = ({ gift, pattern }) => {
 };
 
 const TgsAnimation = ({ gift, model }) => {
-  const canvasRef = useRef(null);
-  const playerRef = useRef(null);
+  const containerRef = useRef(null);
+  const animationRef = useRef(null);
 
   useEffect(() => {
     let isMounted = true;
 
     const loadAnimation = async () => {
-      if (!canvasRef.current) return;
+      if (!containerRef.current) return;
 
       try {
-        // Load rlottie or lottie-web library dynamically
-        // For now, we'll use a simpler approach with the TGS file
-        // const tgsUrl = `${API_BASE}/model/${normalizeGiftName(gift)}/${model}.tgs`;
+        // Dynamically import lottie-web
+        const lottie = await import('lottie-web');
         
-        // Since TGS files are Lottie animations in gzip format,
-        // we can display them using a library like lottie-web
-        // For simplicity, we'll show a placeholder or static image
-        // In production, you would use: npm install lottie-web
+        // Use the API's .json endpoint to get decompressed lottie JSON
+        const jsonUrl = `${API_BASE}/model/${normalizeGiftName(gift)}/${model}.json`;
         
-        // Fallback to showing static PNG during animation
-        const img = new Image();
-        img.src = `${API_BASE}/model/${normalizeGiftName(gift)}/${model}.png?size=128`;
-        img.onload = () => {
-          if (isMounted && canvasRef.current) {
-            const ctx = canvasRef.current.getContext('2d');
-            canvasRef.current.width = 128;
-            canvasRef.current.height = 128;
-            ctx.drawImage(img, 0, 0, 128, 128);
-          }
-        };
+        const response = await fetch(jsonUrl);
+        if (!response.ok) throw new Error(`Failed to load animation: ${response.status}`);
+        
+        const animationData = await response.json();
+        
+        if (!isMounted || !containerRef.current) return;
+        
+        // Clean up previous animation if exists
+        if (animationRef.current) {
+          animationRef.current.destroy();
+        }
+        
+        // Load the animation
+        animationRef.current = lottie.default.loadAnimation({
+          container: containerRef.current,
+          renderer: 'svg',
+          loop: true,
+          autoplay: true,
+          animationData: animationData,
+        });
       } catch (error) {
         console.error(`Failed to load animation for ${gift}/${model}:`, error);
+        // Fallback to static image on error
+        if (containerRef.current && isMounted) {
+          containerRef.current.innerHTML = `<img src="${API_BASE}/model/${normalizeGiftName(gift)}/${model}.png?size=128" alt="gift" style="width: 100%; height: 100%; object-fit: contain;" />`;
+        }
       }
     };
 
@@ -602,21 +612,21 @@ const TgsAnimation = ({ gift, model }) => {
 
     return () => {
       isMounted = false;
-      if (playerRef.current) {
-        playerRef.current = null;
+      if (animationRef.current) {
+        animationRef.current.destroy();
+        animationRef.current = null;
       }
     };
   }, [gift, model]);
 
   return (
-    <canvas
-      ref={canvasRef}
+    <div
+      ref={containerRef}
       style={{
         position: 'absolute',
         inset: 0,
         width: '100%',
         height: '100%',
-        objectFit: 'contain',
         zIndex: 2,
       }}
     />
