@@ -32,6 +32,7 @@ function App() {
 
   useEffect(() => {
     loadInitialData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const loadInitialData = async () => {
@@ -58,7 +59,7 @@ function App() {
       }
 
       setLoading(false);
-    } catch (error) {
+    } catch {
       setLoading(false);
     }
   };
@@ -173,13 +174,14 @@ function App() {
     setPlayingAnimations(prev => ({ ...prev, [key]: true }));
     
     // Animation will play once and then stop
+    // Note: Assumes animation duration is ~3 seconds. Adjust if needed.
     setTimeout(() => {
       setPlayingAnimations(prev => {
         const newState = { ...prev };
         delete newState[key];
         return newState;
       });
-    }, 3000); // Assume animation duration is ~3 seconds
+    }, 3000);
   };
 
   const resetGrid = () => {
@@ -222,7 +224,7 @@ function App() {
         <button onClick={addRow} disabled={animationMode && rows >= 5}>
           Добавить ряд
         </button>
-        <button onClick={removeRow} disabled={rows <= 3 || (animationMode && rows <= 5)}>
+        <button onClick={removeRow} disabled={rows <= 3}>
           Удалить ряд
         </button>
         <button onClick={resetGrid}>Сброс</button>
@@ -358,33 +360,6 @@ const CellModal = ({
   const [pattern, setPattern] = useState(initialData?.pattern || '');
   const [models, setModels] = useState([]);
   const [patterns, setPatterns] = useState([]);
-  const [showOnlyModel, setShowOnlyModel] = useState(false);
-
-  useEffect(() => {
-    if (gift) {
-      // При смене подарка сбрасываем всё зависимое
-      setModel('');
-      setPattern('');
-      setBackdrop(null);
-  
-      // Сбрасываем локальные списки (если они есть)
-      setModels([]);
-      setPatterns([]);
-  
-      // Загружаем новые списки для текущего gift
-      const norm = normalizeGiftName(gift);
-      loadModelsAndPatterns(gift); // твоя существующая функция
-  
-      // Если хочешь — можно сбросить и backdrops здесь, но обычно они общие
-    } else {
-      // Если подарок очищен — тоже сбрасываем
-      setModel('');
-      setPattern('');
-      setBackdrop(null);
-      setModels([]);
-      setPatterns([]);
-    }
-  }, [gift]);  // ← зависимость только от gift
 
   const loadModelsAndPatterns = async (selectedGift) => {
     const norm = normalizeGiftName(selectedGift);
@@ -404,6 +379,32 @@ const CellModal = ({
     }
     setPatterns(patternsData);
   };
+
+  useEffect(() => {
+    if (gift) {
+      // При смене подарка сбрасываем всё зависимое
+      setModel('');
+      setPattern('');
+      setBackdrop(null);
+  
+      // Сбрасываем локальные списки (если они есть)
+      setModels([]);
+      setPatterns([]);
+  
+      // Загружаем новые списки для текущего gift
+      loadModelsAndPatterns(gift); // твоя существующая функция
+  
+      // Если хочешь — можно сбросить и backdrops здесь, но обычно они общие
+    } else {
+      // Если подарок очищен — тоже сбрасываем
+      setModel('');
+      setPattern('');
+      setBackdrop(null);
+      setModels([]);
+      setPatterns([]);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gift]);
 
   const handleLink = () => {
     const parsed = parseLink(link);
@@ -428,8 +429,6 @@ const CellModal = ({
   const handleSave = () => {
     onSave({ gift, model, backdrop, pattern });
   };
-
-  const norm = normalizeGiftName(gift);
 
   return (
     <Modal isOpen={isOpen} onRequestClose={onClose}>
@@ -572,7 +571,7 @@ const TgsAnimation = ({ gift, model }) => {
       try {
         // Load rlottie or lottie-web library dynamically
         // For now, we'll use a simpler approach with the TGS file
-        const tgsUrl = `${API_BASE}/model/${normalizeGiftName(gift)}/${model}.tgs`;
+        // const tgsUrl = `${API_BASE}/model/${normalizeGiftName(gift)}/${model}.tgs`;
         
         // Since TGS files are Lottie animations in gzip format,
         // we can display them using a library like lottie-web
@@ -591,7 +590,7 @@ const TgsAnimation = ({ gift, model }) => {
           }
         };
       } catch (error) {
-        console.error('Failed to load animation:', error);
+        console.error(`Failed to load animation for ${gift}/${model}:`, error);
       }
     };
 
