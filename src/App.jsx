@@ -572,7 +572,7 @@ const ImageWithRetry = ({ src, alt, style, maxRetries = 3 }) => {
       // Retry with incremental delay
       setTimeout(() => {
         setRetryCount(prev => prev + 1);
-      }, 1000 * (retryCount + 1)); // exponential backoff
+      }, 1000 * (retryCount + 1)); // incremental backoff: 1s, 2s, 3s
     } else {
       console.error(`Image load failed after ${maxRetries} retries: ${src}`);
       setHasError(true);
@@ -638,7 +638,8 @@ const TgsAnimation = ({ gift, model }) => {
               if (attempt === maxRetries) {
                 throw error;
               }
-              await new Promise(r => setTimeout(r, 1000 * attempt)); // exponential backoff
+              // Incremental backoff: 1s, 2s, 3s delays between retries
+              await new Promise(r => setTimeout(r, 1000 * attempt));
             }
           }
         };
