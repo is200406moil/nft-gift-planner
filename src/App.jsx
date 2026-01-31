@@ -510,7 +510,7 @@ const PatternRings = ({ gift, pattern }) => {
       const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
       const img = document.createElementNS('http://www.w3.org/2000/svg', 'image');
       img.setAttribute('id', 'pattern-symbol');
-      img.setAttribute('href', `${API_BASE}/pattern/${normalizeGiftName(gift)}/${pattern}.png?size=64`);
+      img.setAttribute('href', `${API_BASE}/pattern/${normalizeGiftName(gift)}/${pattern}.png?size=128`);
       img.setAttribute('width', '32');
       img.setAttribute('height', '32');
       defs.appendChild(img);
