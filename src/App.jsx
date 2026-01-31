@@ -289,7 +289,7 @@ function App() {
                                       />
                                     ) : (
                                       <img
-                                        src={`${API_BASE}/model/${normalizeGiftName(cell.gift)}/${cell.model}.png?size=64`}
+                                        src={`${API_BASE}/model/${normalizeGiftName(cell.gift)}/${cell.model}.png?size=128`}
                                         alt="gift model"
                                         style={{
                                           position: 'absolute',
@@ -511,7 +511,7 @@ const PatternRings = ({ gift, pattern }) => {
       const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
       const img = document.createElementNS('http://www.w3.org/2000/svg', 'image');
       img.setAttribute('id', 'pattern-symbol');
-      img.setAttribute('href', `${API_BASE}/pattern/${normalizeGiftName(gift)}/${pattern}.png?size=64`);
+      img.setAttribute('href', `${API_BASE}/pattern/${normalizeGiftName(gift)}/${pattern}.png?size=128`);
       img.setAttribute('width', '32');
       img.setAttribute('height', '32');
       defs.appendChild(img);
@@ -611,7 +611,7 @@ const TgsAnimation = ({ gift, model }) => {
           // Clear any existing content before adding fallback
           containerRef.current.innerHTML = '';
           const img = document.createElement('img');
-          img.src = `${API_BASE}/model/${normalizeGiftName(gift)}/${model}.png?size=64`;
+          img.src = `${API_BASE}/model/${normalizeGiftName(gift)}/${model}.png?size=128`;
           img.style.width = '100%';
           img.style.height = '100%';
           img.style.objectFit = 'contain';
