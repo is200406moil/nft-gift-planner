@@ -4,6 +4,7 @@ import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import './App.css'; // Assume CSS file for styles
 import Modal from 'react-modal'; // For modals, install react-modal
 import html2canvas from 'html2canvas'; // For export, install html2canvas
+import lottie from 'lottie-web'; // For animations
 
 Modal.setAppElement('#root');
 
@@ -573,9 +574,6 @@ const TgsAnimation = ({ gift, model }) => {
       if (!containerRef.current) return;
 
       try {
-        // Dynamically import lottie-web
-        const lottie = await import('lottie-web');
-        
         // Use the API's .json endpoint to get decompressed lottie JSON
         const jsonUrl = `${API_BASE}/model/${normalizeGiftName(gift)}/${model}.json`;
         
@@ -592,7 +590,7 @@ const TgsAnimation = ({ gift, model }) => {
         }
         
         // Load the animation
-        animationRef.current = lottie.default.loadAnimation({
+        animationRef.current = lottie.loadAnimation({
           container: containerRef.current,
           renderer: 'svg',
           loop: true,
@@ -603,7 +601,15 @@ const TgsAnimation = ({ gift, model }) => {
         console.error(`Failed to load animation for ${gift}/${model}:`, error);
         // Fallback to static image on error
         if (containerRef.current && isMounted) {
-          containerRef.current.innerHTML = `<img src="${API_BASE}/model/${normalizeGiftName(gift)}/${model}.png?size=128" alt="gift" style="width: 100%; height: 100%; object-fit: contain;" />`;
+          // Create image element programmatically to avoid XSS
+          const img = document.createElement('img');
+          img.src = `${API_BASE}/model/${normalizeGiftName(gift)}/${model}.png?size=128`;
+          img.alt = 'gift';
+          img.style.width = '100%';
+          img.style.height = '100%';
+          img.style.objectFit = 'contain';
+          containerRef.current.innerHTML = '';
+          containerRef.current.appendChild(img);
         }
       }
     };
